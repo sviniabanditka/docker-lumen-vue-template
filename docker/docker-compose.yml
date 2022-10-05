@@ -1,0 +1,67 @@
+version: "3.9"
+services:
+
+    # PHP service
+    pms-php:
+        build: ./php
+        container_name: pms-php
+        working_dir: /var/www
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        volumes:
+            - ~/.ssh:/root/.ssh
+            - ../backend:/var/www
+            - ./php/php.ini:/usr/local/etc/php/php.ini
+        networks:
+            - pms-network
+
+    # Node service
+    pms-js:
+        build: ./js
+        container_name: pms-js
+        working_dir: /var/www
+        ports:
+            - 8002:8080
+        volumes:
+            - ~/.ssh:/root/.ssh
+            - ../frontend:/var/www
+        networks:
+            - pms-network
+
+    # MySQL database service
+    pms-db:
+        image: mysql:8
+        container_name: pms-db
+        ports:
+            - "33061:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}    
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_USER: ${DB_USERNAME}
+            MYSQL_DATABASE: ${DB_DATABASE}
+        volumes:
+            - ./mysql/data:/var/lib/mysql
+        env_file:
+            - ./.env
+        networks:
+            - pms-network
+
+    # Nginx service
+    pms-nginx:
+        image: nginx:alpine
+        container_name: pms-nginx
+        ports:
+            - 8001:80
+        volumes:
+            - ../backend/:/var/www
+            - ./nginx/:/etc/nginx/conf.d/
+        networks:
+            - pms-network
+        links:
+            - pms-php
+        depends_on:
+            - pms-php
+
+networks:
+    pms-network:
+        driver: bridge
